@@ -23,7 +23,7 @@ const BUBBLE_THEMES = [
   { bg: 'from-sky-200/80 to-blue-300/80', border: 'border-sky-400' },
   { bg: 'from-amber-200/80 to-yellow-300/80', border: 'border-amber-400' },
   { bg: 'from-emerald-200/80 to-green-300/80', border: 'border-emerald-400' },
-  { bg: 'from-purple-200/80 to-indigo-300/80', border: 'border-purple-400' },
+  { bg: 'from-orange-200/80 to-amber-300/80', border: 'border-orange-400' },
 ];
 
 export const BubblePopGame: React.FC<BubblePopGameProps> = ({ level, onComplete }) => {
@@ -161,7 +161,7 @@ export const BubblePopGame: React.FC<BubblePopGameProps> = ({ level, onComplete 
               onClick={handleReplayPrompt}
               className="px-6 py-3.5 bg-white hover:bg-slate-50 text-slate-900 font-black text-2xl sm:text-3xl rounded-2xl border-4 border-amber-400 shadow-bubbly active:shadow-bubbly-active transform hover:scale-105 active:scale-95 transition flex items-center gap-3 animate-pulse-subtle"
             >
-              <Volume2 className="w-8 h-8 text-amber-600 animate-bounce" />
+              <Volume2 className="w-8 h-8 text-amber-600 animate-pulse-subtle" />
               <span>"{currentTarget.word}"</span>
             </button>
           </div>
@@ -174,7 +174,7 @@ export const BubblePopGame: React.FC<BubblePopGameProps> = ({ level, onComplete 
 
       {/* Feedback Toast */}
       {feedback && (
-        <div className="text-center animate-bounce">
+        <div className="text-center animate-scale-in">
           <span className="inline-flex items-center gap-2 bg-white px-6 py-2 rounded-full font-black text-base shadow-bubbly border-2 border-rose-300 text-rose-700">
             <Sparkles className="w-5 h-5 text-amber-500" />
             {feedback}

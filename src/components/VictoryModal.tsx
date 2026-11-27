@@ -103,7 +103,7 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
                 key={starIdx}
                 className={`transition-all duration-300 transform ${
                   isEarned
-                    ? 'scale-110 drop-shadow-md animate-bounce'
+                    ? 'scale-110 drop-shadow-md animate-pop-in'
                     : 'scale-90 opacity-40'
                 }`}
                 style={{ animationDelay: `${starIdx * 0.15}s` }}

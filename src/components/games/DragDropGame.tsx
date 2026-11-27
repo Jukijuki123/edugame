@@ -88,7 +88,7 @@ function DropZone({
         <div className="flex flex-col items-center justify-center gap-2 animate-scale-in">
           <div className="relative">
             <ItemIllustration name={placedItem.icon} size={70} />
-            <div className="absolute -top-1 -right-1 bg-emerald-500 text-white p-1 rounded-full shadow-md animate-bounce">
+            <div className="absolute -top-1 -right-1 bg-emerald-500 text-white p-1 rounded-full shadow-md animate-pop-in">
               <CheckCircle2 className="w-4 h-4 stroke-[3]" />
             </div>
           </div>
@@ -246,7 +246,7 @@ export const DragDropGame: React.FC<DragDropGameProps> = ({ level, onComplete })
 
         {/* Dynamic Feedback Toast */}
         {feedbackEffect && (
-          <div className="text-center animate-bounce">
+          <div className="text-center animate-scale-in">
             <span className={`inline-flex items-center gap-2 bg-white px-5 py-2 rounded-full font-black text-base shadow-bubbly border-2 border-amber-200 ${feedbackEffect.color}`}>
               <Sparkles className="w-5 h-5" />
               {feedbackEffect.text}

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Check, Volume2, Sparkles, X } from 'lucide-react';
 import { LevelData, LevelItem } from '../../data/levels';
 import { ItemIllustration } from '../ItemIllustration';
@@ -12,25 +12,36 @@ interface ConnectLineGameProps {
 interface Connection {
   leftId: string;
   rightId: string;
-  status: 'correct' | 'wrong' | 'pending';
+  status: 'correct' | 'wrong';
+}
+
+interface FeedbackMessage {
+  text: string;
+  type: 'success' | 'error';
 }
 
 export const ConnectLineGame: React.FC<ConnectLineGameProps> = ({ level, onComplete }) => {
   const [connections, setConnections] = useState<Connection[]>([]);
   const [selectedLeft, setSelectedLeft] = useState<string | null>(null);
   const [errors, setErrors] = useState(0);
-  const [feedback, setFeedback] = useState<{ text: string; color: string } | null>(null);
+  const [feedback, setFeedback] = useState<FeedbackMessage | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const leftRefs = useRef<Record<string, HTMLDivElement>>({});
   const rightRefs = useRef<Record<string, HTMLDivElement>>({});
 
-  // Shuffle right side items for variety
-  const rightItems = React.useMemo(() => {
+  // Shuffle right side items for variety (stable per session)
+  const rightItems = useMemo(() => {
     return [...level.items].sort(() => Math.random() - 0.5);
   }, [level.items]);
 
-  // Calculate line positions
-  const getLinePath = (leftId: string, rightId: string) => {
+  // Theme color helpers
+  const themeColor = level.themeColor;
+  const themeColorLight = `${themeColor}1A`; // 10% opacity
+  const themeColorMedium = `${themeColor}4D`; // 30% opacity
+  const themeColorStrong = `${themeColor}CC`; // 80% opacity
+
+  // Calculate line positions using quadratic bezier curve
+  const getLinePath = (leftId: string, rightId: string): string => {
     const leftEl = leftRefs.current[leftId];
     const rightEl = rightRefs.current[rightId];
     const svg = svgRef.current;
@@ -53,7 +64,7 @@ export const ConnectLineGame: React.FC<ConnectLineGameProps> = ({ level, onCompl
     return `M ${startX} ${startY} C ${cp1x} ${startY}, ${cp2x} ${endY}, ${endX} ${endY}`;
   };
 
-  // Update SVG lines on render
+  // Trigger SVG layer visibility after layout
   useEffect(() => {
     if (svgRef.current) {
       svgRef.current.style.opacity = '1';
@@ -61,7 +72,6 @@ export const ConnectLineGame: React.FC<ConnectLineGameProps> = ({ level, onCompl
   }, [connections, selectedLeft]);
 
   const handleLeftClick = (item: LevelItem) => {
-    // If already connected correctly, ignore
     const existingConnection = connections.find(c => c.leftId === item.id && c.status === 'correct');
     if (existingConnection) return;
 
@@ -79,7 +89,6 @@ export const ConnectLineGame: React.FC<ConnectLineGameProps> = ({ level, onCompl
     const isMatch = leftItem.id === item.id;
 
     if (isMatch) {
-      // Correct connection!
       soundManager.playSuccess();
       soundManager.speakEnglish(leftItem.word);
 
@@ -90,7 +99,7 @@ export const ConnectLineGame: React.FC<ConnectLineGameProps> = ({ level, onCompl
 
       setFeedback({
         text: `Hebat! ${leftItem.word} (${leftItem.translation})`,
-        color: 'text-emerald-600'
+        type: 'success'
       });
       setTimeout(() => setFeedback(null), 2000);
 
@@ -99,7 +108,6 @@ export const ConnectLineGame: React.FC<ConnectLineGameProps> = ({ level, onCompl
         setTimeout(() => onComplete(errors), 800);
       }
     } else {
-      // Wrong connection
       soundManager.playWrong();
       setErrors(prev => prev + 1);
 
@@ -108,10 +116,9 @@ export const ConnectLineGame: React.FC<ConnectLineGameProps> = ({ level, onCompl
 
       setFeedback({
         text: 'Ayo coba sambung yang cocok!',
-        color: 'text-rose-600'
+        type: 'error'
       });
 
-      // Remove wrong connection after animation
       setTimeout(() => {
         setConnections(prev => prev.filter(c => c !== wrongConnection));
         setTimeout(() => setFeedback(null), 1000);
@@ -131,13 +138,66 @@ export const ConnectLineGame: React.FC<ConnectLineGameProps> = ({ level, onCompl
 
   const progressCount = connections.filter(c => c.status === 'correct').length;
 
+  // Dynamic className builders
+  const getLeftItemClassName = (connected: boolean, selected: boolean) => {
+    const base = 'group relative w-full h-24 sm:h-28 rounded-3xl border-4 flex items-center justify-center gap-4 p-3 transition-all duration-200 ease-out cursor-pointer select-none touch-none focus-visible:outline-none focus-visible:ring-4';
+    if (connected) return `${base} bg-emerald-50/90 border-emerald-400 shadow-sm`;
+    if (selected) return `${base} bg-[${themeColorLight}] border-[${themeColorStrong}] scale-[1.02] shadow-bubbly ring-4 ring-[${themeColorMedium}]`;
+    return `${base} bg-white/80 border-slate-300/80 hover:border-[${themeColor}] hover:shadow-bubbly hover:-translate-x-1`;
+  };
+
+  const getRightItemClassName = (connected: boolean) => {
+    const base = 'group relative w-full h-24 sm:h-28 rounded-3xl border-4 flex items-center justify-center gap-4 p-3 transition-all duration-200 ease-out cursor-pointer select-none touch-none text-left focus-visible:outline-none focus-visible:ring-4';
+    if (connected) return `${base} bg-emerald-50/90 border-emerald-400 shadow-sm`;
+    return `${base} bg-white/80 border-slate-300/80 hover:border-[${themeColor}] hover:shadow-bubbly hover:translate-x-1`;
+  };
+
+  const headerBorderStyle = { borderColor: themeColorStrong };
+  const columnLabelStyle = { color: themeColorStrong };
+  const progressBarStyle = { background: `linear-gradient(90deg, ${themeColor}, ${themeColor})` };
+  const celebrationStyle = { background: `linear-gradient(135deg, ${themeColor}, ${themeColor}DD)` };
+  const speakerButtonStyle = { backgroundColor: themeColorLight, color: themeColor };
+  const translationBadgeStyle = { color: themeColor, backgroundColor: themeColorLight };
+  const previewLineFilter = `drop-shadow(0 0 3px ${themeColor})`;
+  const correctLineFilter = 'drop-shadow(0 0 3px #10B981)';
+  const wrongLineFilter = 'drop-shadow(0 0 2px #FB7185)';
+  const feedbackToastBorder = feedback?.type === 'success' ? 'border-emerald-300 text-emerald-700' : 'border-rose-300 text-rose-700';
+  const feedbackSparkleColor = feedback?.type === 'success' ? '#10B981' : '#FB7185';
+  const speakerIconStyle = { color: themeColor };
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-4 space-y-6">
+      {/* Browser surface theming via injected style */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        ::selection {
+          background-color: ${themeColor}4D;
+          color: ${themeColor};
+        }
+        :focus-visible {
+          outline: 3px solid ${themeColor};
+          outline-offset: 2px;
+        }
+        ::-webkit-scrollbar {
+          width: 8px;
+          height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+          background: ${themeColor}66;
+          border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+          background: ${themeColor}99;
+        }
+      `}} />
+
       {/* Top Header & Instruction */}
-      <div className="bg-white/90 p-4 rounded-3xl border-3 border-violet-300 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div className="bg-white/90 p-4 rounded-3xl border-3 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3" style={headerBorderStyle}>
         <div className="space-y-1 text-center sm:text-left">
           <div className="flex items-center gap-2 justify-center sm:justify-start">
-            <span className="text-xl">🔗</span>
+            <span className="text-xl" aria-hidden="true">🔗</span>
             <h2 className="text-xl sm:text-2xl font-black text-slate-800">{level.title}</h2>
           </div>
           <p className="text-sm font-semibold text-slate-600">
@@ -152,8 +212,11 @@ export const ConnectLineGame: React.FC<ConnectLineGameProps> = ({ level, onCompl
           </span>
           <div className="w-32 h-3.5 bg-slate-200 rounded-full overflow-hidden border border-slate-300 mt-1">
             <div
-              className="h-full bg-gradient-to-r from-violet-400 to-purple-500 rounded-full transition-all duration-300"
-              style={{ width: `${(progressCount / level.items.length) * 100}%` }}
+              className="h-full rounded-full transition-all duration-500 ease-out"
+              style={{
+                width: `${(progressCount / level.items.length) * 100}%`,
+                ...progressBarStyle,
+              }}
             ></div>
           </div>
         </div>
@@ -161,9 +224,9 @@ export const ConnectLineGame: React.FC<ConnectLineGameProps> = ({ level, onCompl
 
       {/* Feedback Toast */}
       {feedback && (
-        <div className="text-center animate-bounce">
-          <span className={`inline-flex items-center gap-2 bg-white px-5 py-2 rounded-full font-black text-base shadow-bubbly border-2 border-violet-200 ${feedback.color}`}>
-            <Sparkles className="w-5 h-5 text-violet-500" />
+        <div className="text-center animate-scale-in" role="status" aria-live="polite">
+          <span className={`inline-flex items-center gap-2 bg-white px-5 py-2 rounded-full font-black text-base shadow-bubbly border-2 ${feedbackToastBorder}`}>
+            <Sparkles className="w-5 h-5" style={{ color: feedbackSparkleColor }} />
             {feedback.text}
           </span>
         </div>
@@ -176,26 +239,26 @@ export const ConnectLineGame: React.FC<ConnectLineGameProps> = ({ level, onCompl
           ref={svgRef}
           className="absolute inset-0 w-full h-full pointer-events-none overflow-visible z-10"
           style={{ opacity: 0 }}
+          aria-hidden="true"
         >
           {connections.map((conn, idx) => {
             const path = getLinePath(conn.leftId, conn.rightId);
             if (!path) return null;
 
             const isWrong = conn.status === 'wrong';
-            const isPending = conn.status === 'pending' && conn.leftId === selectedLeft;
 
             return (
               <path
                 key={`${conn.leftId}-${conn.rightId}-${idx}`}
                 d={path}
-                stroke={isWrong ? '#fb7185' : isPending ? level.themeColor : '#4ade80'}
+                stroke={isWrong ? '#FB7185' : '#10B981'}
                 strokeWidth={isWrong ? 4 : 5}
                 strokeDasharray={isWrong ? '8,4' : 'none'}
                 strokeLinecap="round"
                 fill="none"
                 className={isWrong ? 'animate-wobble' : 'animate-draw'}
                 style={{
-                  filter: isWrong ? 'drop-shadow(0 0 2px #fb7185)' : 'drop-shadow(0 0 3px #4ade80)',
+                  filter: isWrong ? wrongLineFilter : correctLineFilter,
                 }}
               />
             );
@@ -212,16 +275,15 @@ export const ConnectLineGame: React.FC<ConnectLineGameProps> = ({ level, onCompl
                 const svgRect = svg.getBoundingClientRect();
                 const startX = leftRect.right - svgRect.left;
                 const startY = leftRect.top + leftRect.height / 2 - svgRect.top;
-                // Draw to mouse center-ish as hint
                 return `M ${startX} ${startY} L ${startX + 100} ${startY}`;
               })()}
-              stroke={level.themeColor}
+              stroke={themeColor}
               strokeWidth={3}
               strokeDasharray="6,4"
               strokeLinecap="round"
               fill="none"
               className="animate-dash"
-              style={{ filter: `drop-shadow(0 0 3px ${level.themeColor})` }}
+              style={{ filter: previewLineFilter }}
             />
           )}
         </svg>
@@ -230,7 +292,7 @@ export const ConnectLineGame: React.FC<ConnectLineGameProps> = ({ level, onCompl
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 items-start relative z-20">
           {/* LEFT COLUMN - Images */}
           <div className="space-y-3">
-            <div className="text-center font-extrabold text-sm text-violet-800 mb-2 uppercase tracking-wider">
+            <div className="text-center font-extrabold text-sm mb-2 uppercase tracking-wider" style={columnLabelStyle}>
               Gambar / Ilustrasi
             </div>
             <div className="space-y-3" role="list" aria-label="Pilih gambar">
@@ -244,18 +306,12 @@ export const ConnectLineGame: React.FC<ConnectLineGameProps> = ({ level, onCompl
                     key={item.id}
                     ref={el => { leftRefs.current[item.id] = el!; }}
                     onClick={() => handleLeftClick(item)}
-                    className={`group relative w-full h-24 sm:h-28 rounded-3xl border-4 flex items-center justify-center gap-4 p-3 transition-all duration-200 cursor-pointer select-none touch-none ${
-                      connected
-                        ? 'bg-emerald-50/90 border-emerald-400 shadow-sm'
-                        : selected
-                        ? `bg-${level.themeColor.replace('#', '')}-100/80 border-${level.themeColor.replace('#', '')}-500 scale-[1.02] shadow-bubbly ring-4 ring-${level.themeColor.replace('#', '')}-200`
-                        : 'bg-white/80 border-slate-300/80 hover:border-violet-400 hover:shadow-bubbly hover:-translate-x-1'
-                    }`}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleLeftClick(item); } }}
+                    className={getLeftItemClassName(connected, selected)}
                     role="listitem"
                     aria-label={`${item.word} (${item.translation})${connected ? ', sudah disambungkan' : ''}`}
                     aria-selected={selected}
                     tabIndex={0}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleLeftClick(item); } }}
                   >
                     <div className="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center flex-shrink-0">
                       <ItemIllustration name={item.icon} size={72} />
@@ -270,19 +326,19 @@ export const ConnectLineGame: React.FC<ConnectLineGameProps> = ({ level, onCompl
                     </div>
 
                     {connected && (
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 bg-emerald-500 text-white p-2 rounded-full shadow-md animate-bounce-in">
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 bg-emerald-500 text-white p-2 rounded-full shadow-md animate-pop-in" aria-hidden="true">
                         <Check className="w-5 h-5 stroke-[3]" />
                       </div>
                     )}
 
                     {selected && !connected && (
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                        <Volume2 className={`w-6 h-6 text-${level.themeColor.replace('#', '')}-600 animate-bounce`} />
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2" aria-hidden="true">
+                        <Volume2 className="w-6 h-6 animate-pulse-subtle" style={speakerIconStyle} />
                       </div>
                     )}
 
                     {wrongConnection && (
-                      <div className="absolute left-3 top-1/2 -translate-y-1/2 bg-rose-500 text-white p-1.5 rounded-full shadow-md animate-wobble">
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 bg-rose-500 text-white p-1.5 rounded-full shadow-md animate-wobble" aria-hidden="true">
                         <X className="w-4 h-4 stroke-[3]" />
                       </div>
                     )}
@@ -294,7 +350,7 @@ export const ConnectLineGame: React.FC<ConnectLineGameProps> = ({ level, onCompl
 
           {/* RIGHT COLUMN - Words */}
           <div className="space-y-3">
-            <div className="text-center font-extrabold text-sm text-violet-800 mb-2 uppercase tracking-wider">
+            <div className="text-center font-extrabold text-sm mb-2 uppercase tracking-wider" style={columnLabelStyle}>
               Kata Bahasa Inggris
             </div>
             <div className="space-y-3" role="list" aria-label="Pilih kata yang cocok">
@@ -307,20 +363,18 @@ export const ConnectLineGame: React.FC<ConnectLineGameProps> = ({ level, onCompl
                     key={item.id}
                     ref={el => { rightRefs.current[item.id] = el!; }}
                     onClick={() => handleRightClick(item)}
-                    className={`group relative w-full h-24 sm:h-28 rounded-3xl border-4 flex items-center justify-center gap-4 p-3 transition-all duration-200 cursor-pointer select-none touch-none text-left ${
-                      connected
-                        ? 'bg-emerald-50/90 border-emerald-400 shadow-sm'
-                        : 'bg-white/80 border-slate-300/80 hover:border-violet-400 hover:shadow-bubbly hover:translate-x-1'
-                    }`}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleRightClick(item); } }}
+                    className={getRightItemClassName(connected)}
                     role="listitem"
                     aria-label={`${item.word} (${item.translation})${connected ? ', sudah disambungkan' : ''}`}
                     tabIndex={0}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleRightClick(item); } }}
                   >
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       <button
                         onClick={(e) => { e.stopPropagation(); handleReplayAudio(item.word); }}
-                        className="flex-shrink-0 w-10 h-10 rounded-xl bg-violet-100 text-violet-600 hover:bg-violet-200 transition flex items-center justify-center shadow-sm"
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleReplayAudio(item.word); } }}
+                        className="flex-shrink-0 w-10 h-10 rounded-xl transition-all duration-150 ease-out flex items-center justify-center shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                        style={speakerButtonStyle}
                         aria-label={`Dengarkan ${item.word}`}
                         title="Dengarkan pengucapan"
                       >
@@ -330,20 +384,20 @@ export const ConnectLineGame: React.FC<ConnectLineGameProps> = ({ level, onCompl
                         <div className="font-extrabold text-lg sm:text-xl text-slate-800 leading-tight truncate">
                           {item.word}
                         </div>
-                        <div className="text-xs font-bold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full inline-block">
+                        <div className="text-xs font-bold px-2 py-0.5 rounded-full inline-block" style={translationBadgeStyle}>
                           {item.translation}
                         </div>
                       </div>
                     </div>
 
                     {connected && (
-                      <div className="absolute left-3 top-1/2 -translate-y-1/2 bg-emerald-500 text-white p-2 rounded-full shadow-md animate-bounce-in">
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 bg-emerald-500 text-white p-2 rounded-full shadow-md animate-pop-in" aria-hidden="true">
                         <Check className="w-5 h-5 stroke-[3]" />
                       </div>
                     )}
 
                     {wrongConnection && (
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 bg-rose-500 text-white p-1.5 rounded-full shadow-md animate-wobble">
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 bg-rose-500 text-white p-1.5 rounded-full shadow-md animate-wobble" aria-hidden="true">
                         <X className="w-4 h-4 stroke-[3]" />
                       </div>
                     )}
@@ -357,8 +411,8 @@ export const ConnectLineGame: React.FC<ConnectLineGameProps> = ({ level, onCompl
 
       {/* Completion Celebration */}
       {progressCount === level.items.length && progressCount > 0 && (
-        <div className="text-center animate-bounce-in py-4">
-          <div className="inline-flex items-center gap-3 bg-gradient-to-r from-emerald-400 to-green-500 text-white px-8 py-4 rounded-2xl font-black text-lg shadow-bubbly border-2 border-white">
+        <div className="text-center animate-scale-in py-4" role="status" aria-live="polite">
+          <div className="inline-flex items-center gap-3 text-white px-8 py-4 rounded-2xl font-black text-lg shadow-bubbly border-2 border-white animate-pop-in" style={celebrationStyle}>
             <Sparkles className="w-6 h-6 fill-white animate-pulse" />
             <span>Semua Terhubung! Luar Biasa! 🎉</span>
           </div>

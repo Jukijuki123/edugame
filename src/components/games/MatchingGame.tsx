@@ -161,7 +161,7 @@ export const MatchingGame: React.FC<MatchingGameProps> = ({ level, onComplete })
         <div className="flex items-center gap-4">
           {/* Combo Meter */}
           {combo > 1 && (
-            <div className="flex items-center gap-1.5 bg-orange-100 text-orange-700 px-3 py-1 rounded-full border border-orange-300 font-extrabold text-sm animate-bounce">
+            <div className="flex items-center gap-1.5 bg-orange-100 text-orange-700 px-3 py-1 rounded-full border border-orange-300 font-extrabold text-sm animate-pulse-subtle">
               <Flame className="w-4 h-4 fill-orange-500" />
               <span>{combo}x Combo!</span>
             </div>
@@ -184,7 +184,7 @@ export const MatchingGame: React.FC<MatchingGameProps> = ({ level, onComplete })
 
       {/* Combo Cheer Banner */}
       {comboMessage && (
-        <div className="text-center animate-bounce">
+        <div className="text-center animate-scale-in">
           <span className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-400 to-orange-400 text-amber-950 px-6 py-2 rounded-full font-black text-base shadow-bubbly border-2 border-white">
             <Sparkles className="w-5 h-5 fill-white" />
             {comboMessage}

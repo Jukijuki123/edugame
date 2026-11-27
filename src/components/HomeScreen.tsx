@@ -31,7 +31,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         {/* Hero Title */}
         <div className="space-y-3">
           <h1 className="text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight">
-            <span className="bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 bg-clip-text text-transparent drop-shadow-sm">
+            <span className="text-amber-600 drop-shadow-sm">
               WordQuest
             </span>{' '}
             <span className="text-sky-500 underline decoration-sky-300 decoration-wavy decoration-2">
@@ -39,7 +39,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             </span>
           </h1>
           <p className="text-slate-600 font-semibold text-lg sm:text-xl max-w-xl mx-auto">
-            Jelajahi dunia kata Bahasa Inggris dengan permainan seret kartu, kartu balik 3D, dan letuskan gelembung suara! 🎈
+            Jelajahi dunia kata Bahasa Inggris dengan permainan seret kartu, <strong>Klik Sambung</strong>, dan letuskan gelembung suara! 🎈
           </p>
         </div>
 
@@ -50,7 +50,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             {/* Cute Mascot Avatar */}
             <div className="relative z-10 w-full h-full bg-gradient-to-tr from-amber-200 via-yellow-100 to-sky-100 rounded-full border-4 border-amber-400 shadow-bubbly flex items-center justify-center animate-float">
               <span className="text-7xl sm:text-8xl select-none filter drop-shadow-md">🦁</span>
-              <div className="absolute -top-2 -right-2 bg-yellow-400 text-yellow-950 px-3 py-1 rounded-full font-extrabold text-xs shadow-md border-2 border-white animate-bounce">
+              <div className="absolute -top-2 -right-2 bg-yellow-400 text-yellow-950 px-3 py-1 rounded-full font-extrabold text-xs shadow-md border-2 border-white animate-pulse-subtle">
                 Hi Friend!
               </div>
             </div>
